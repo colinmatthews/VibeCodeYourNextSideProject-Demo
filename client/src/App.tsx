@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, ErrorInfo, ReactNode } from "react";
 import { queryClient } from "./lib/queryClient";
@@ -7,8 +7,6 @@ import { AuthProvider } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
-import NewContact from "@/pages/contacts/new";
-import EditContact from "@/pages/contacts/edit";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/LandingPage";
 import Profile from "@/pages/profile";
@@ -36,11 +34,11 @@ class ErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-gray-900">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
+            <h1 className="text-2xl font-bold mb-4 text-white">Something went wrong</h1>
             <button
-              className="bg-blue-500 text-white px-4 py-2 rounded"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
               onClick={() => this.setState({ hasError: false })}
             >
               Try again
@@ -55,8 +53,13 @@ class ErrorBoundary extends Component<
 }
 
 function Router() {
+  const [location] = useLocation();
+  
+  // Only show Footer on landing page
+  const showFooter = location === '/';
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-900 dark">
       <Navbar />
       <div className="flex-1">
         <Switch>
@@ -64,14 +67,12 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/pricing" component={Pricing} />
-          <Route path="/contacts/new" component={NewContact} />
-          <Route path="/contacts/edit/:id" component={EditContact} />
           <Route path="/profile" component={Profile} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
       </div>
-      <Footer />
+      {showFooter && <Footer />}
     </div>
   );
 }

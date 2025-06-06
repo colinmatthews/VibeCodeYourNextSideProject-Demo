@@ -1,5 +1,4 @@
-
-import { pgTable, text, serial, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -32,13 +31,34 @@ export const items = pgTable("items", {
   userId: text("user_id").notNull().references(() => users.firebaseId),
 });
 
+export const components = pgTable("components", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  code: text("code").notNull(),
+  prompt: text("prompt").notNull(),
+  screenshot: text("screenshot"), // URL string for the screenshot
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  version: integer("version").notNull().default(1),
+  userId: text("user_id").notNull().references(() => users.firebaseId),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   items: many(items),
+  components: many(components),
 }));
 
 export const itemsRelations = relations(items, ({ one }) => ({
   user: one(users, {
     fields: [items.userId],
+    references: [users.firebaseId],
+  }),
+}));
+
+export const componentsRelations = relations(components, ({ one }) => ({
+  user: one(users, {
+    fields: [components.userId],
     references: [users.firebaseId],
   }),
 }));
@@ -62,7 +82,30 @@ export const insertItemSchema = createInsertSchema(items, {
   item: z.string(),
 });
 
+export const insertComponentSchema = createInsertSchema(components, {
+  id: z.string(),
+  name: z.string().min(1, "Component name is required"),
+  description: z.string().min(1, "Component description is required"),
+  code: z.string().min(1, "Component code is required"),
+  prompt: z.string().min(1, "Component prompt is required"),
+  screenshot: z.string().optional(),
+  version: z.number().int().positive().default(1),
+  userId: z.string(),
+});
+
+export const updateComponentSchema = createInsertSchema(components, {
+  name: z.string().min(1, "Component name is required").optional(),
+  description: z.string().min(1, "Component description is required").optional(),
+  code: z.string().min(1, "Component code is required").optional(),
+  prompt: z.string().min(1, "Component prompt is required").optional(),
+  screenshot: z.string().optional(),
+  version: z.number().int().positive().optional(),
+}).omit({ id: true, userId: true, createdAt: true });
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertItem = z.infer<typeof insertItemSchema>;
 export type Item = typeof items.$inferSelect;
+export type InsertComponent = z.infer<typeof insertComponentSchema>;
+export type UpdateComponent = z.infer<typeof updateComponentSchema>;
+export type Component = typeof components.$inferSelect;

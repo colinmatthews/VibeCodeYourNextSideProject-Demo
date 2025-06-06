@@ -4,21 +4,21 @@ import { SiFirebase, SiSendgrid, SiStripe } from "react-icons/si";
 export default function LandingPage() {
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8 text-center">Vibe Code Your Next Side Project</h1>
-      <p className="text-lg mb-8 text-center text-muted-foreground">
+      <h1 className="text-4xl font-bold mb-8 text-center text-white">Vibe Code Your Next Side Project</h1>
+      <p className="text-lg mb-8 text-center text-gray-300">
         A production-ready web application template with authentication, payments, and email notifications built in. 
         Currently configured for tracking a list of elements, but easily customizable to build your own product! 
         Built with modern web technologies and best practices.
       </p>
 
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-12">
-        <Card className="p-6">
+        <Card className="p-6 bg-gray-800 border-gray-700">
           <div className="flex items-center gap-2 mb-4">
             <SiFirebase className="h-6 w-6 text-orange-500" />
-            <h2 className="text-2xl font-semibold">Firebase Setup</h2>
+            <h2 className="text-2xl font-semibold text-white">Firebase Setup</h2>
           </div>
-          <ol className="list-decimal list-inside space-y-2">
-            <li>Go to the <a href="https://console.firebase.google.com/" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Firebase Console</a></li>
+          <ol className="list-decimal list-inside space-y-2 text-gray-300">
+            <li>Go to the <a href="https://console.firebase.google.com/" className="text-indigo-400 hover:text-indigo-300 hover:underline" target="_blank" rel="noopener noreferrer">Firebase Console</a></li>
             <li>Create a new Firebase project</li>
             <li>Click "Add app" and select Web platform ({"</>"} icon)</li>
             <li>Register your app and note down the configuration values</li>
@@ -43,13 +43,13 @@ export default function LandingPage() {
           </ol>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-6 bg-gray-800 border-gray-700">
           <div className="flex items-center gap-2 mb-4">
             <SiSendgrid className="h-6 w-6 text-blue-500" />
-            <h2 className="text-2xl font-semibold">SendGrid Setup</h2>
+            <h2 className="text-2xl font-semibold text-white">SendGrid Setup</h2>
           </div>
-          <ol className="list-decimal list-inside space-y-2">
-            <li>Create a <a href="https://signup.sendgrid.com/" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">SendGrid account</a></li>
+          <ol className="list-decimal list-inside space-y-2 text-gray-300">
+            <li>Create a <a href="https://signup.sendgrid.com/" className="text-indigo-400 hover:text-indigo-300 hover:underline" target="_blank" rel="noopener noreferrer">SendGrid account</a></li>
             <li>Verify your sender identity</li>
             <li>Create an API key:
               <ul className="list-disc list-inside ml-4 mt-2">
@@ -62,13 +62,13 @@ export default function LandingPage() {
           </ol>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-6 bg-gray-800 border-gray-700">
           <div className="flex items-center gap-2 mb-4">
             <SiStripe className="h-6 w-6 text-[#635BFF]" />
-            <h2 className="text-2xl font-semibold">Stripe Setup</h2>
+            <h2 className="text-2xl font-semibold text-white">Stripe Setup</h2>
           </div>
-          <ol className="list-decimal list-inside space-y-2">
-            <li>Create a <a href="https://dashboard.stripe.com/register" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Stripe account</a></li>
+          <ol className="list-decimal list-inside space-y-2 text-gray-300">
+            <li>Create a <a href="https://dashboard.stripe.com/register" className="text-indigo-400 hover:text-indigo-300 hover:underline" target="_blank" rel="noopener noreferrer">Stripe account</a></li>
             <li>Get your API keys:
               <ul className="list-disc list-inside ml-4 mt-2">
                 <li>Go to Developers → API keys</li>
@@ -105,8 +105,8 @@ export default function LandingPage() {
       </div>
 
       <div className="text-center">
-        <h3 className="text-2xl font-semibold mb-4">Features & Customization</h3>
-        <ul className="text-lg text-muted-foreground inline-block text-left">
+        <h3 className="text-2xl font-semibold mb-4 text-white">Features & Customization</h3>
+        <ul className="text-lg text-gray-300 inline-block text-left">
           <li>✓ User Authentication via Firebase</li>
           <li>✓ Email Notifications with SendGrid</li>
           <li>✓ Payment Processing through Stripe</li>

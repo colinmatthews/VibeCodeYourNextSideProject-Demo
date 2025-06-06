@@ -22,34 +22,33 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="border-b bg-background">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+    <nav className="border-b border-gray-700 bg-gray-800">
+      <div className="w-full h-16 flex items-center justify-between">
         <Link href="/">
-          <a className="flex items-center">
-            <img 
-              src="/placeholder-logo.svg" 
-              alt="Your Logo" 
-              className="h-8" 
-            />
+          <a className="flex items-center gap-2 pl-4">
+            <svg className="h-8 w-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            <span className="text-xl font-bold text-white">Component Generator</span>
           </a>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 pr-4">
           <Link href="/pricing">
-            <Button variant="ghost">Pricing</Button>
+            <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700">Pricing</Button>
           </Link>
           {user ? (
             <>
               <Link href="/dashboard">
-                <Button variant="ghost">Dashboard</Button>
+                <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700">Dashboard</Button>
               </Link>
               <Link href="/settings">
-                <Button variant="ghost">Settings</Button>
+                <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700">Settings</Button>
               </Link>
-              <Button onClick={handleSignOut} variant="outline">Sign Out</Button>
+              <Button onClick={handleSignOut} variant="outline" className="border-gray-600 text-white hover:bg-gray-700 hover:text-white">Sign Out</Button>
             </>
           ) : (
             <Link href="/login">
-              <Button>Sign In</Button>
+              <Button className="bg-indigo-600 hover:bg-indigo-700">Sign In</Button>
             </Link>
           )}
         </div>

@@ -57,8 +57,8 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-border" />
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
       </div>
     );
   }
@@ -161,20 +161,20 @@ export default function Settings() {
   };
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-4xl font-bold mb-8">Settings</h1>
+    <div className="container mx-auto py-10 bg-gray-900 min-h-screen">
+      <h1 className="text-4xl font-bold mb-8 text-white">Settings</h1>
 
       <div className="space-y-6">
-        <Card className="p-6">
-          <h2 className="text-2xl font-semibold mb-4">Account</h2>
+        <Card className="p-6 bg-gray-800 border-gray-700">
+          <h2 className="text-2xl font-semibold mb-4 text-white">Account</h2>
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 text-gray-300">
               <strong>Email:</strong> 
               <span>{firebaseUser.email}</span>
             </div>
             {isEmailUser && (
               <form onSubmit={handlePasswordChange} className="space-y-4">
-                <h3 className="text-xl font-semibold">Change Password</h3>
+                <h3 className="text-xl font-semibold text-white">Change Password</h3>
                 <Input
                   type="password"
                   placeholder="Current Password"
@@ -222,8 +222,8 @@ export default function Settings() {
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h2 className="text-2xl font-semibold mb-4">Email Preferences</h2>
+        <Card className="p-6 bg-gray-800 border-gray-700">
+          <h2 className="text-2xl font-semibold mb-4 text-white">Email Preferences</h2>
           <div className="flex items-center space-x-4">
             <Switch
               id="email-notifications"
@@ -233,23 +233,23 @@ export default function Settings() {
                 updateEmailPreferences.mutate(checked);
               }}
             />
-            <Label htmlFor="email-notifications">
+            <Label htmlFor="email-notifications" className="text-gray-300">
               Receive email notifications when new items are added
             </Label>
           </div>
         </Card>
 
-        <Card className="mt-4">
+        <Card className="mt-4 bg-gray-800 border-gray-700">
           <CardHeader>
-            <CardTitle>Your Plan</CardTitle>
+            <CardTitle className="text-white">Your Plan</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-lg font-medium">
+                <p className="text-lg font-medium text-white">
                   Current Plan: {userData?.subscriptionType === 'pro' ? 'Pro' : 'Free'}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-400">
                   {userData?.subscriptionType === 'pro' 
                     ? 'You have access to all pro features. Manage your subscription through the billing portal.'
                     : 'Upgrade to pro for unlimited items and premium features'}
@@ -259,6 +259,7 @@ export default function Settings() {
                 <Button
                   variant="outline"
                   onClick={handleOpenBillingPortal}
+                  className="border-gray-600 text-white hover:bg-gray-700 hover:text-white"
                 >
                   Manage Subscription
                 </Button>
@@ -274,21 +275,21 @@ export default function Settings() {
         </Card>
 
         {userData?.subscriptionType === 'pro' && (
-          <Card className="p-6">
-            <h2 className="text-2xl font-semibold mb-4">Billing</h2>
+          <Card className="p-6 bg-gray-800 border-gray-700">
+            <h2 className="text-2xl font-semibold mb-4 text-white">Billing</h2>
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-400">
                 Manage your subscription, update payment methods, view billing history, 
                 and download invoices through the Stripe customer portal.
               </p>
               <Button 
                 variant="outline" 
                 onClick={handleOpenBillingPortal}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto border-gray-600 text-white hover:bg-gray-700 hover:text-white"
               >
                 Open Billing Portal
               </Button>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-400">
                 💡 All payment methods and billing are securely handled by Stripe.
               </p>
             </div>

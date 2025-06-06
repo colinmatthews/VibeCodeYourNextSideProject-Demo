@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { registerWebhookRoutes } from "./routes/webhookRoutes";
+import { registerAIRoutes } from "./routes/aiRoutes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -16,8 +17,11 @@ const app = express();
   await registerWebhookRoutes(app);
 
   // Now apply global JSON parsing middleware for all other routes
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  app.use(express.json({ limit: '10mb' })); // Increase limit for image uploads
+  app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+  // Register AI routes
+  await registerAIRoutes(app);
 
   app.use((req, res, next) => {
     const start = Date.now();

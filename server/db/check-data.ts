@@ -10,6 +10,10 @@ async function checkData() {
     console.log('\nChecking items table:');
     const items = await db.query.items.findMany();
     console.log(items);
+
+    console.log('\nChecking components table:');
+    const components = await db.query.components.findMany();
+    console.log(components);
   } catch (error) {
     console.error('Error checking data:', error);
   } finally {

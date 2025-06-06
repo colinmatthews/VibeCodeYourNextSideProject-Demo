@@ -8,6 +8,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import type { User } from "firebase/auth";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -35,20 +36,7 @@ export default function Login() {
     setShowProfileForm(true);
   };
 
-  if (showProfileForm && newUser) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-primary/10 to-background">
-        <Card className="w-full max-w-md mx-4">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Complete Your Profile</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <UserProfileForm onComplete={() => setLocation("/dashboard")} />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Profile form functionality removed as UserProfileForm component doesn't exist
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,11 +140,10 @@ export default function Login() {
   };
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-primary/10 to-background">
-        <Card className="w-full max-w-md mx-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-900/20 to-gray-900">
+      <Card className="w-full max-w-md mx-4 bg-gray-800 border-gray-700">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">Welcome Back</CardTitle>
           </CardHeader>
           <CardContent>
             {error && <p className="text-red-500 text-xs italic mb-2">{error}</p>} {/* Added error display */}
@@ -166,21 +153,23 @@ export default function Login() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500"
               />
               <Input
                 type="password"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500"
               />
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700">
                 {isSignUp ? "Sign Up" : "Sign In"}
               </Button>
               <div className="flex flex-col gap-2">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="w-full"
+                  className="w-full text-gray-300 hover:text-white hover:bg-gray-700"
                   onClick={() => setIsSignUp(!isSignUp)}
                 >
                   {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
@@ -189,7 +178,7 @@ export default function Login() {
                   <Button
                     type="button"
                     variant="link"
-                    className="text-sm"
+                    className="text-sm text-indigo-400 hover:text-indigo-300"
                     onClick={() => setShowForgotPassword(true)} // Open dialog on click
                   >
                     Forgot Password?
@@ -231,7 +220,7 @@ export default function Login() {
                     });
                   }
                 }}
-                className="w-full flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
               >
                 <FcGoogle className="w-5 h-5" />
                 Sign in with Google
@@ -259,9 +248,9 @@ export default function Login() {
         </Card>
 
         <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
-          <DialogContent>
+          <DialogContent className="bg-gray-800 border-gray-700">
             <DialogHeader>
-              <DialogTitle>Reset Password</DialogTitle>
+              <DialogTitle className="text-white">Reset Password</DialogTitle>
             </DialogHeader>
             <div className="py-4">
               <Input
@@ -269,15 +258,15 @@ export default function Login() {
                 placeholder="Enter your email"
                 value={resetEmail}
                 onChange={(e) => setResetEmail(e.target.value)}
+                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500"
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowForgotPassword(false)}>Cancel</Button>
-              <Button onClick={handlePasswordReset}>Send Reset Link</Button>
+              <Button variant="outline" onClick={() => setShowForgotPassword(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white">Cancel</Button>
+              <Button onClick={handlePasswordReset} className="bg-indigo-600 hover:bg-indigo-700">Send Reset Link</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
     </div>
   );
 }
