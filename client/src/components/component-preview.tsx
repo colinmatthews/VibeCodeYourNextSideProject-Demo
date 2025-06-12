@@ -5,12 +5,38 @@ import { LiveProvider, LivePreview, LiveError } from "react-live"
 import * as React from "react"
 import { AlertCircle } from "lucide-react"
 import { ElementTracker } from "./element-tracker"
+import { QualityBadge } from "./quality-badge"
+import { ValidationErrors } from "./validation-errors"
+
+interface ComponentQualityScore {
+  codeQuality: number
+  accessibility: number
+  designConsistency: number
+  performance: number
+  overall: number
+}
+
+interface ValidationError {
+  type: 'typescript' | 'eslint' | 'accessibility' | 'runtime'
+  message: string
+  line?: number
+  column?: number
+  severity: 'error' | 'warning' | 'info'
+}
 
 interface ComponentPreviewProps {
   code: string
+  qualityScore?: ComponentQualityScore
+  validationErrors?: ValidationError[]
+  showQualityInfo?: boolean
 }
 
-export function ComponentPreview({ code }: ComponentPreviewProps) {
+export function ComponentPreview({ 
+  code, 
+  qualityScore, 
+  validationErrors, 
+  showQualityInfo = false 
+}: ComponentPreviewProps) {
   const { trackedCode } = ElementTracker({ code });
 
   const scope = useMemo(
@@ -66,21 +92,40 @@ export function ComponentPreview({ code }: ComponentPreviewProps) {
   }, [transformedCode]);
 
   return (
-    <div className="border border-gray-600 rounded-lg overflow-hidden bg-gray-800">
-      <LiveProvider key={previewKey} code={transformedCode} scope={scope} noInline={true}>
-        <div className="p-4 min-h-32 bg-gray-700">
-          <LivePreview />
-        </div>
-        <LiveError className="bg-red-900/50 border-t border-red-600 p-3 text-red-300 text-sm flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <div className="font-medium mb-1">Preview Error</div>
-            <div className="text-xs opacity-90">
-              Component failed to render. Common issues: missing imports (React hooks are available globally), syntax errors, or invalid JSX.
+    <div className="space-y-4">
+      {/* Quality Information */}
+      {showQualityInfo && (qualityScore || validationErrors) && (
+        <div className="space-y-3">
+          {qualityScore && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700">Quality Score:</span>
+              <QualityBadge qualityScore={qualityScore} showDetails={true} />
             </div>
+          )}
+          
+          {validationErrors && validationErrors.length > 0 && (
+            <ValidationErrors errors={validationErrors} />
+          )}
+        </div>
+      )}
+
+      {/* Component Preview */}
+      <div className="border border-gray-600 rounded-lg overflow-hidden bg-gray-800">
+        <LiveProvider key={previewKey} code={transformedCode} scope={scope} noInline={true}>
+          <div className="p-4 min-h-32 bg-gray-700">
+            <LivePreview />
           </div>
-        </LiveError>
-      </LiveProvider>
+          <LiveError className="bg-red-900/50 border-t border-red-600 p-3 text-red-300 text-sm flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <div className="font-medium mb-1">Preview Error</div>
+              <div className="text-xs opacity-90">
+                Component failed to render. Common issues: missing imports (React hooks are available globally), syntax errors, or invalid JSX.
+              </div>
+            </div>
+          </LiveError>
+        </LiveProvider>
+      </div>
     </div>
   )
 }

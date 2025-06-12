@@ -3,6 +3,7 @@ import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { vercel } from '@ai-sdk/vercel';
+import { validateGeneratedCode, type ValidationResult } from '../lib/quality-validation.js';
 
 // Provider factory based on environment
 function getAIProvider() {
@@ -29,29 +30,139 @@ interface GenerationRequest {
   originalCreatedAt?: string;
   originalVersion?: number;
   image?: string; // Base64 encoded image data
+  componentType?: 'form' | 'display' | 'navigation' | 'layout' | 'interactive' | 'data-visualization';
 }
 
-function generateSystemPrompt(hasImage: boolean = false): string {
-  const basePrompt = `You are an expert React and Tailwind CSS developer. Your task is to generate or modify React functional components.
-You MUST follow these rules:
+function detectComponentType(prompt: string): string {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  if (lowerPrompt.includes('form') || lowerPrompt.includes('input') || lowerPrompt.includes('submit') || lowerPrompt.includes('login') || lowerPrompt.includes('signup')) {
+    return 'form';
+  } else if (lowerPrompt.includes('nav') || lowerPrompt.includes('menu') || lowerPrompt.includes('header') || lowerPrompt.includes('footer') || lowerPrompt.includes('sidebar')) {
+    return 'navigation';
+  } else if (lowerPrompt.includes('chart') || lowerPrompt.includes('graph') || lowerPrompt.includes('data') || lowerPrompt.includes('analytics') || lowerPrompt.includes('dashboard')) {
+    return 'data-visualization';
+  } else if (lowerPrompt.includes('modal') || lowerPrompt.includes('dialog') || lowerPrompt.includes('tooltip') || lowerPrompt.includes('dropdown') || lowerPrompt.includes('accordion')) {
+    return 'interactive';
+  } else if (lowerPrompt.includes('layout') || lowerPrompt.includes('grid') || lowerPrompt.includes('container') || lowerPrompt.includes('section')) {
+    return 'layout';
+  }
+  return 'display';
+}
+
+function getComponentSpecificGuidance(componentType: string): string {
+  switch (componentType) {
+    case 'form':
+      return `
+**FORM COMPONENT GUIDELINES**:
+- Always include proper form validation and error handling
+- Use semantic HTML form elements (form, input, label, button)
+- Include ARIA labels and proper accessibility attributes
+- Implement proper form state management with useState
+- Include loading states for form submission
+- Use proper input types (email, password, tel, etc.)
+- Include proper error display and validation feedback`;
+
+    case 'navigation':
+      return `
+**NAVIGATION COMPONENT GUIDELINES**:
+- Use semantic navigation elements (nav, ul, li)
+- Include proper ARIA landmarks and navigation roles
+- Implement active/current state styling
+- Consider mobile responsiveness and hamburger menus
+- Use proper focus management for keyboard navigation
+- Include proper link semantics and hover states`;
+
+    case 'data-visualization':
+      return `
+**DATA VISUALIZATION GUIDELINES**:
+- Use proper semantic markup for tables and lists
+- Include proper ARIA labels for charts and graphs
+- Implement responsive design for different screen sizes
+- Use meaningful color schemes with proper contrast
+- Include loading states for data fetching
+- Provide alternative text descriptions for visual data`;
+
+    case 'interactive':
+      return `
+**INTERACTIVE COMPONENT GUIDELINES**:
+- Implement proper keyboard navigation (Enter, Escape, Arrow keys)
+- Include proper ARIA states (expanded, selected, pressed)
+- Use semantic HTML elements where possible
+- Implement proper focus management
+- Include smooth animations and transitions
+- Handle edge cases and error states`;
+
+    case 'layout':
+      return `
+**LAYOUT COMPONENT GUIDELINES**:
+- Use CSS Grid or Flexbox for responsive layouts
+- Implement proper responsive breakpoints
+- Consider content hierarchy and visual flow
+- Use semantic HTML landmarks (main, section, aside)
+- Ensure proper spacing and typography scales
+- Test across different viewport sizes`;
+
+    default:
+      return `
+**DISPLAY COMPONENT GUIDELINES**:
+- Focus on clean, readable typography
+- Use proper content hierarchy with headings
+- Implement responsive design patterns
+- Include proper color contrast for accessibility
+- Use semantic HTML elements for content structure
+- Consider loading states if displaying dynamic content`;
+  }
+}
+
+function generateSystemPrompt(hasImage: boolean = false, componentType: string = 'display'): string {
+  const componentGuidance = getComponentSpecificGuidance(componentType);
+  
+  const basePrompt = `You are an expert React and Tailwind CSS developer specializing in high-quality, accessible component generation. Your task is to generate or modify React functional components with exceptional quality standards.
+
+**CORE DEVELOPMENT RULES**:
 1. The generated code must be a single React functional component.
 2. React hooks (useState, useEffect, useCallback, useMemo, useRef) are available globally - you can use them directly without imports.
 3. Do NOT include any import statements (React, useState, etc.) - they are provided in the runtime environment.
-4. Style components using Tailwind CSS with inline styles where needed for custom styling.
-5. Use a modern, clean design with good spacing, typography, and visual hierarchy.
-6. The component code should be self-contained and renderable without any external dependencies.
-7. After the component function definition, you MUST include a \`render()\` call to display an example of the component. For example: \`render(<MyComponent prop1="example" />);\`. If the component takes no props, use \`render(<MyComponent />);\`.
-8. Ensure the component is responsive and accessible where appropriate.
-9. Structure your response using the XML format specified in the user's prompt.
-10. IMPORTANT: Event handlers like onClick, onChange, onSubmit should use arrow function syntax: \`(e) => { ... }\` or \`() => { ... }\`.
-11. **LIGHT THEME BY DEFAULT**: Generate components with light themes unless specifically requested otherwise. Use light backgrounds (white, gray-50, gray-100) and dark text (gray-900, gray-800, gray-700). For accent colors, use bright, vibrant colors that work well on light backgrounds.
-12. **Color Guidelines**: 
+4. Style components using Tailwind CSS with semantic class names and consistent spacing.
+5. The component code should be self-contained and renderable without any external dependencies.
+6. After the component function definition, you MUST include a \`render()\` call to display an example of the component.
+7. Structure your response using the XML format specified in the user's prompt.
+8. IMPORTANT: Event handlers like onClick, onChange, onSubmit should use arrow function syntax: \`(e) => { ... }\` or \`() => { ... }\`.
+
+**QUALITY STANDARDS**:
+9. **TypeScript Compatibility**: Write clean, type-safe code that would pass TypeScript compilation.
+10. **Accessibility First**: Follow WCAG 2.1 AA guidelines:
+    - Use semantic HTML elements (button, nav, main, section, article)
+    - Include proper ARIA labels and roles
+    - Ensure proper color contrast ratios
+    - Implement keyboard navigation support
+    - Provide alt text for images
+11. **Performance Optimization**:
+    - Minimize inline objects and functions that cause re-renders
+    - Use useMemo/useCallback for expensive operations
+    - Implement proper state management patterns
+12. **Design System Consistency**:
+    - Use consistent spacing patterns (multiples of 4: p-4, m-8, etc.)
+    - Follow modern design principles with proper visual hierarchy
+    - Implement responsive design with mobile-first approach
+    - Use consistent color schemes and typography
+
+**THEME GUIDELINES**:
+13. **LIGHT THEME BY DEFAULT**: Generate components with light themes unless specifically requested otherwise.
     - Primary backgrounds: bg-white, bg-gray-50, bg-gray-100
     - Text colors: text-gray-900, text-gray-800, text-gray-700
-    - Accent colors: Use vibrant colors like blue-600, indigo-600, green-600, purple-600, etc.
+    - Accent colors: Use vibrant colors like blue-600, indigo-600, green-600, purple-600
     - Borders: border-gray-200, border-gray-300
     - Hover states: hover:bg-gray-100, hover:bg-gray-200
-13. Use appropriate spacing and styling to make the component visually appealing and functional with the light theme aesthetic.`;
+
+${componentGuidance}
+
+**ERROR HANDLING & EDGE CASES**:
+14. Include proper error boundaries and fallback states
+15. Handle loading states appropriately
+16. Validate props and provide sensible defaults
+17. Consider empty states and error scenarios`;
 
   if (hasImage) {
     return basePrompt + `
@@ -129,6 +240,10 @@ export async function registerAIRoutes(app: Express) {
 
       const model = getAIProvider();
       
+      // Detect component type for enhanced prompt engineering
+      const componentType = request.componentType || detectComponentType(request.prompt);
+      console.log("Detected component type:", componentType);
+      
       let userPrompt: string | Array<any>;
       const hasImage = !!request.image;
 
@@ -198,7 +313,7 @@ export async function registerAIRoutes(app: Express) {
       
       const { text } = await generateText({
         model,
-        system: generateSystemPrompt(hasImage),
+        system: generateSystemPrompt(hasImage, componentType),
         messages: [
           {
             role: 'user',
@@ -212,6 +327,9 @@ export async function registerAIRoutes(app: Express) {
       console.log("AI generation successful. Parsing response...");
       const parsed = parseAIResponse(text, !!request.targetComponent);
 
+      console.log("Validating generated code quality...");
+      const validation = await validateGeneratedCode(parsed.code);
+
       const component = {
         id: request.targetComponent || `comp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: parsed.name,
@@ -221,15 +339,118 @@ export async function registerAIRoutes(app: Express) {
         createdAt: request.targetComponent ? new Date(request.originalCreatedAt || Date.now()) : new Date(),
         updatedAt: new Date(),
         version: request.targetComponent ? (request.originalVersion || 0) + 1 : 1,
+        qualityScore: validation.qualityScore,
+        validationErrors: validation.errors,
+        accessibilityScore: validation.qualityScore.accessibility,
       };
 
-      console.log("Component generation successful:", component.name);
-      res.json(component);
+      console.log("Component generation successful:", component.name, 
+                 `Quality Score: ${validation.qualityScore.overall}/100`);
+      
+      // Return component with validation results
+      res.json({
+        ...component,
+        validation: {
+          isValid: validation.isValid,
+          errors: validation.errors,
+          qualityScore: validation.qualityScore,
+        }
+      });
 
     } catch (error) {
       console.error("Component generation error:", error);
       res.status(500).json({
         error: "Failed to generate component. Please try again.",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Pre-generation code validation endpoint
+  app.post('/api/components/validate', async (req: Request, res: Response) => {
+    try {
+      const { code } = req.body;
+
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({
+          error: 'Invalid request: code (string) is required.'
+        });
+      }
+
+      console.log("Validating component code...");
+      const validation = await validateGeneratedCode(code);
+
+      res.json({
+        isValid: validation.isValid,
+        errors: validation.errors,
+        qualityScore: validation.qualityScore,
+      });
+
+    } catch (error) {
+      console.error("Code validation error:", error);
+      res.status(500).json({
+        error: "Failed to validate component code. Please try again.",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Component rating endpoint
+  app.put('/api/components/:id/rating', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { rating } = req.body;
+
+      if (!id || !rating || typeof rating !== 'number' || rating < 1 || rating > 5) {
+        return res.status(400).json({
+          error: 'Invalid request: component ID and rating (1-5) are required.'
+        });
+      }
+
+      // Note: This would need to be connected to your actual database
+      // For now, just returning success response
+      console.log(`Component ${id} rated: ${rating}/5`);
+
+      res.json({
+        success: true,
+        componentId: id,
+        rating: rating,
+        message: 'Rating saved successfully'
+      });
+
+    } catch (error) {
+      console.error("Component rating error:", error);
+      res.status(500).json({
+        error: "Failed to save component rating. Please try again.",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Quality metrics endpoint (for future dashboard)
+  app.get('/api/admin/quality-metrics', async (req: Request, res: Response) => {
+    try {
+      // Note: This would need to be connected to your actual database
+      // For now, returning mock data structure
+      const metrics = {
+        totalComponents: 0,
+        averageQualityScore: 0,
+        averageUserRating: 0,
+        qualityTrends: [],
+        componentsByType: {},
+        validationStats: {
+          totalValidated: 0,
+          passRate: 0,
+          commonErrors: []
+        }
+      };
+
+      res.json(metrics);
+
+    } catch (error) {
+      console.error("Quality metrics error:", error);
+      res.status(500).json({
+        error: "Failed to fetch quality metrics. Please try again.",
         details: error instanceof Error ? error.message : "Unknown error"
       });
     }
