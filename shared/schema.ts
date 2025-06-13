@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -9,6 +9,24 @@ export const SubscriptionType = {
 } as const;
 
 export type SubscriptionType = typeof SubscriptionType[keyof typeof SubscriptionType];
+
+// Phase 1: Quality scoring interface
+export interface ComponentQualityScore {
+  codeQuality: number;      // TypeScript compliance, best practices (0-100)
+  accessibility: number;    // WCAG compliance score (0-100)
+  designConsistency: number; // shadcn/ui pattern adherence (0-100)
+  performance: number;      // Bundle size, render optimization (0-100)
+  overall: number;          // Combined score (0-100)
+}
+
+export interface ValidationError {
+  type: 'typescript' | 'accessibility' | 'performance' | 'design' | 'best-practices';
+  severity: 'error' | 'warning' | 'info';
+  message: string;
+  line?: number;
+  column?: number;
+  rule?: string;
+}
 
 export const users = pgTable("users", {
   firebaseId: text("firebase_id").primaryKey(),
@@ -42,6 +60,11 @@ export const components = pgTable("components", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   version: integer("version").notNull().default(1),
   userId: text("user_id").notNull().references(() => users.firebaseId),
+  // Phase 1: Quality validation fields
+  qualityScore: jsonb("quality_score"), // ComponentQualityScore interface
+  userRating: integer("user_rating"), // 1-5 star rating
+  validationErrors: jsonb("validation_errors"), // Detailed error tracking
+  accessibilityScore: integer("accessibility_score"), // 0-100 WCAG compliance score
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -82,6 +105,25 @@ export const insertItemSchema = createInsertSchema(items, {
   item: z.string(),
 });
 
+// Quality score schema
+export const qualityScoreSchema = z.object({
+  codeQuality: z.number().min(0).max(100),
+  accessibility: z.number().min(0).max(100),
+  designConsistency: z.number().min(0).max(100),
+  performance: z.number().min(0).max(100),
+  overall: z.number().min(0).max(100),
+}).strict();
+
+// Validation error schema
+export const validationErrorSchema = z.object({
+  type: z.enum(['typescript', 'accessibility', 'performance', 'design', 'best-practices']),
+  severity: z.enum(['error', 'warning', 'info']),
+  message: z.string(),
+  line: z.number().optional(),
+  column: z.number().optional(),
+  rule: z.string().optional(),
+}).strict();
+
 export const insertComponentSchema = createInsertSchema(components, {
   id: z.string(),
   name: z.string().min(1, "Component name is required"),
@@ -91,6 +133,10 @@ export const insertComponentSchema = createInsertSchema(components, {
   screenshot: z.string().optional(),
   version: z.number().int().positive().default(1),
   userId: z.string(),
+  qualityScore: qualityScoreSchema.optional(),
+  userRating: z.number().int().min(1).max(5).optional(),
+  validationErrors: z.array(validationErrorSchema).optional(),
+  accessibilityScore: z.number().int().min(0).max(100).optional(),
 });
 
 export const updateComponentSchema = createInsertSchema(components, {
@@ -100,6 +146,10 @@ export const updateComponentSchema = createInsertSchema(components, {
   prompt: z.string().min(1, "Component prompt is required").optional(),
   screenshot: z.string().optional(),
   version: z.number().int().positive().optional(),
+  qualityScore: qualityScoreSchema.optional(),
+  userRating: z.number().int().min(1).max(5).optional(),
+  validationErrors: z.array(validationErrorSchema).optional(),
+  accessibilityScore: z.number().int().min(0).max(100).optional(),
 }).omit({ id: true, userId: true, createdAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

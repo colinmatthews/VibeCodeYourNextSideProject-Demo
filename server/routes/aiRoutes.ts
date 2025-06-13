@@ -3,19 +3,46 @@ import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { vercel } from '@ai-sdk/vercel';
+import { validateComponentQuality, analyzeComponent } from '../lib/qualityValidation';
+import { enhancePromptForQuality } from '../lib/promptEnhancement';
+import { 
+  selectOptimalPromptStrategy, 
+  selectOptimalAIProvider,
+  enhancePromptWithContext,
+  updateStrategyPerformance,
+  updateProviderPerformance,
+  type GenerationContext,
+  type AIProviderPerformance,
+  PROMPT_STRATEGIES
+} from '../lib/aiQualityEnhancement';
 
-// Provider factory based on environment
-function getAIProvider() {
+// Phase 3: In-memory storage for performance metrics (in production, use database)
+const providerPerformanceCache: AIProviderPerformance[] = [];
+
+// Provider factory with intelligent selection
+function getAIProvider(preferredProvider?: 'vercel' | 'openai' | 'anthropic') {
   const vercelKey = process.env.VERCEL_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   
+  // If a specific provider is requested and available, use it
+  if (preferredProvider) {
+    if (preferredProvider === 'vercel' && vercelKey) {
+      return { provider: vercel('v0-1.0-md'), name: 'vercel' as const };
+    } else if (preferredProvider === 'openai' && openaiKey) {
+      return { provider: openai('gpt-4o'), name: 'openai' as const };
+    } else if (preferredProvider === 'anthropic' && anthropicKey) {
+      return { provider: anthropic('claude-3-5-sonnet-20241022'), name: 'anthropic' as const };
+    }
+  }
+  
+  // Fallback to default priority
   if (vercelKey) {
-    return vercel('v0-1.0-md');
+    return { provider: vercel('v0-1.0-md'), name: 'vercel' as const };
   } else if (openaiKey) {
-    return openai('gpt-4o');
+    return { provider: openai('gpt-4o'), name: 'openai' as const };
   } else if (anthropicKey) {
-    return anthropic('claude-3-5-sonnet-20241022');
+    return { provider: anthropic('claude-3-5-sonnet-20241022'), name: 'anthropic' as const };
   } else {
     throw new Error('No AI provider API key found. Please set VERCEL_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable.');
   }
@@ -31,45 +58,12 @@ interface GenerationRequest {
   image?: string; // Base64 encoded image data
 }
 
+// Legacy function - replaced by enhanced prompt system
 function generateSystemPrompt(hasImage: boolean = false): string {
-  const basePrompt = `You are an expert React and Tailwind CSS developer. Your task is to generate or modify React functional components.
-You MUST follow these rules:
-1. The generated code must be a single React functional component.
-2. React hooks (useState, useEffect, useCallback, useMemo, useRef) are available globally - you can use them directly without imports.
-3. Do NOT include any import statements (React, useState, etc.) - they are provided in the runtime environment.
-4. Style components using Tailwind CSS with inline styles where needed for custom styling.
-5. Use a modern, clean design with good spacing, typography, and visual hierarchy.
-6. The component code should be self-contained and renderable without any external dependencies.
-7. After the component function definition, you MUST include a \`render()\` call to display an example of the component. For example: \`render(<MyComponent prop1="example" />);\`. If the component takes no props, use \`render(<MyComponent />);\`.
-8. Ensure the component is responsive and accessible where appropriate.
-9. Structure your response using the XML format specified in the user's prompt.
-10. IMPORTANT: Event handlers like onClick, onChange, onSubmit should use arrow function syntax: \`(e) => { ... }\` or \`() => { ... }\`.
-11. **LIGHT THEME BY DEFAULT**: Generate components with light themes unless specifically requested otherwise. Use light backgrounds (white, gray-50, gray-100) and dark text (gray-900, gray-800, gray-700). For accent colors, use bright, vibrant colors that work well on light backgrounds.
-12. **Color Guidelines**: 
-    - Primary backgrounds: bg-white, bg-gray-50, bg-gray-100
-    - Text colors: text-gray-900, text-gray-800, text-gray-700
-    - Accent colors: Use vibrant colors like blue-600, indigo-600, green-600, purple-600, etc.
-    - Borders: border-gray-200, border-gray-300
-    - Hover states: hover:bg-gray-100, hover:bg-gray-200
-13. Use appropriate spacing and styling to make the component visually appealing and functional with the light theme aesthetic.`;
-
-  if (hasImage) {
-    return basePrompt + `
-
-**IMAGE ANALYSIS INSTRUCTIONS**:
-14. **ANALYZE THE PROVIDED IMAGE CAREFULLY**: Study the image to understand the layout, design patterns, colors, typography, spacing, and interactive elements.
-15. **RECREATE EXACTLY**: Generate a React component that matches the image as closely as possible. Pay attention to:
-    - Layout and positioning of elements
-    - Colors, fonts, and sizing
-    - Spacing and margins/padding
-    - Interactive elements (buttons, inputs, etc.)
-    - Overall visual hierarchy and design
-16. **PRESERVE DESIGN INTENT**: If the image shows a dark theme, recreate it as dark. If it shows specific colors, match them closely using Tailwind classes or custom styles.
-17. **EXTRACT TEXT CONTENT**: Use any visible text from the image in your component (for labels, headings, placeholder text, etc.).
-18. **INFER FUNCTIONALITY**: Based on the UI elements visible, implement appropriate interactive behavior (forms, buttons, navigation, etc.).`;
-  }
-  
-  return basePrompt;
+  // This function is now handled by enhancePromptForQuality
+  // Keeping for backward compatibility
+  const { systemPrompt } = enhancePromptForQuality("", hasImage);
+  return systemPrompt;
 }
 
 function parseAIResponse(xmlString: string, isEdit: boolean): { name: string; description: string; code: string } {
@@ -127,10 +121,53 @@ export async function registerAIRoutes(app: Express) {
         });
       }
 
-      const model = getAIProvider();
+      // Phase 3: Context-aware AI enhancement
+      console.log("Setting up context-aware generation...");
+      
+      // Create generation context
+      const generationContext: GenerationContext = {
+        userPrompt: request.prompt,
+        componentType: 'display', // Will be detected by prompt enhancement
+        complexityLevel: 'medium', // Will be detected by prompt enhancement
+        previousAttempts: [], // In production, fetch from database
+        userQualityPreferences: {
+          priorityWeights: {
+            codeQuality: 0.3,
+            accessibility: 0.3,
+            designConsistency: 0.2,
+            performance: 0.2
+          },
+          minAcceptableScore: 70
+        }
+      };
+
+      // Select optimal prompt strategy based on context
+      const selectedStrategy = selectOptimalPromptStrategy(generationContext, PROMPT_STRATEGIES);
+      console.log(`Selected prompt strategy: ${selectedStrategy.name}`);
+
+      // Select optimal AI provider based on performance history
+      const optimalProvider = selectOptimalAIProvider(generationContext, providerPerformanceCache);
+      console.log(`Selected AI provider: ${optimalProvider}`);
+
+      const aiProvider = getAIProvider(optimalProvider);
+      const model = aiProvider.provider;
       
       let userPrompt: string | Array<any>;
       const hasImage = !!request.image;
+
+      // Enhanced prompt generation with quality focus and context
+      const promptEnhancement = enhancePromptForQuality(request.prompt, hasImage);
+      
+      // Apply context-aware enhancements
+      const contextualPrompts = enhancePromptWithContext(
+        request.prompt,
+        generationContext,
+        selectedStrategy
+      );
+
+      // Update generation context with detected component type and complexity
+      generationContext.componentType = promptEnhancement.config.componentType || 'display';
+      generationContext.complexityLevel = promptEnhancement.config.complexityLevel;
 
       if (request.targetComponent && request.originalComponentCode) {
         // Edit existing component
@@ -141,7 +178,7 @@ export async function registerAIRoutes(app: Express) {
               text: `
 <request type="edit_component">
   <original_code><![CDATA[${request.originalComponentCode}]]></original_code>
-  <edit_instruction>${request.prompt}</edit_instruction>
+  <edit_instruction>${contextualPrompts.userPrompt}</edit_instruction>
   <image_analysis>Analyze the provided image and incorporate any design elements or changes shown in the image into the existing component.</image_analysis>
   <thinking_process>...</thinking_process>
   Your output MUST be in the following XML format:
@@ -157,7 +194,7 @@ export async function registerAIRoutes(app: Express) {
           userPrompt = `
 <request type="edit_component">
   <original_code><![CDATA[${request.originalComponentCode}]]></original_code>
-  <edit_instruction>${request.prompt}</edit_instruction>
+  <edit_instruction>${contextualPrompts.userPrompt}</edit_instruction>
   <thinking_process>...</thinking_process>
   Your output MUST be in the following XML format:
   <component_edit><name>...</name><description>...</description><code><![CDATA[...]]></code></component_edit>
@@ -171,7 +208,7 @@ export async function registerAIRoutes(app: Express) {
               type: "text",
               text: `
 <request type="new_component">
-  <description_prompt>${request.prompt}</description_prompt>
+  <description_prompt>${contextualPrompts.userPrompt}</description_prompt>
   <image_analysis>Analyze the provided image and recreate the exact UI/component shown. Match the design, layout, colors, typography, and functionality as closely as possible.</image_analysis>
   <thinking_process>...</thinking_process>
   Your output MUST be in the following XML format:
@@ -186,7 +223,7 @@ export async function registerAIRoutes(app: Express) {
         } else {
           userPrompt = `
 <request type="new_component">
-  <description_prompt>${request.prompt}</description_prompt>
+  <description_prompt>${contextualPrompts.userPrompt}</description_prompt>
   <thinking_process>...</thinking_process>
   Your output MUST be in the following XML format:
   <component><name>...</name><description>...</description><code><![CDATA[...]]></code></component>
@@ -198,7 +235,7 @@ export async function registerAIRoutes(app: Express) {
       
       const { text } = await generateText({
         model,
-        system: generateSystemPrompt(hasImage),
+        system: contextualPrompts.systemPrompt,
         messages: [
           {
             role: 'user',
@@ -212,6 +249,31 @@ export async function registerAIRoutes(app: Express) {
       console.log("AI generation successful. Parsing response...");
       const parsed = parseAIResponse(text, !!request.targetComponent);
 
+      console.log("Running quality validation...");
+      // Phase 1: Quality validation pipeline
+      const qualityResult = await validateComponentQuality(parsed.code);
+      
+      console.log("Quality validation complete:", {
+        score: qualityResult.qualityScore.overall,
+        isValid: qualityResult.isValid,
+        errorCount: qualityResult.validationErrors.length
+      });
+
+      // Phase 3: Update performance metrics
+      console.log("Updating performance metrics...");
+      
+      // Update strategy performance
+      updateStrategyPerformance(selectedStrategy.id, qualityResult.qualityScore);
+      
+      // Update provider performance
+      updateProviderPerformance(
+        aiProvider.name,
+        generationContext.componentType,
+        generationContext.complexityLevel,
+        qualityResult.qualityScore,
+        providerPerformanceCache
+      );
+
       const component = {
         id: request.targetComponent || `comp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: parsed.name,
@@ -221,9 +283,22 @@ export async function registerAIRoutes(app: Express) {
         createdAt: request.targetComponent ? new Date(request.originalCreatedAt || Date.now()) : new Date(),
         updatedAt: new Date(),
         version: request.targetComponent ? (request.originalVersion || 0) + 1 : 1,
+        // Phase 1: Quality tracking fields
+        qualityScore: qualityResult.qualityScore,
+        validationErrors: qualityResult.validationErrors,
+        accessibilityScore: qualityResult.accessibilityScore,
+        // Phase 3: AI enhancement tracking
+        promptStrategy: selectedStrategy.id,
+        aiProvider: aiProvider.name,
+        componentType: generationContext.componentType,
+        complexityLevel: generationContext.complexityLevel
       };
 
       console.log("Component generation successful:", component.name);
+      console.log("Quality score:", qualityResult.qualityScore.overall);
+      console.log("Strategy used:", selectedStrategy.name);
+      console.log("Provider used:", aiProvider.name);
+      
       res.json(component);
 
     } catch (error) {
@@ -252,6 +327,33 @@ export async function registerAIRoutes(app: Express) {
         activeProvider: vercelKey ? 'vercel' : openaiKey ? 'openai' : anthropicKey ? 'anthropic' : 'none'
       });
     } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Phase 3: AI performance metrics endpoint
+  app.get('/api/ai/performance-metrics', async (req: Request, res: Response) => {
+    try {
+      res.json({
+        message: 'AI performance metrics retrieved successfully',
+        metrics: {
+          providers: providerPerformanceCache,
+          strategies: PROMPT_STRATEGIES.map(strategy => ({
+            id: strategy.id,
+            name: strategy.name,
+            description: strategy.description,
+            targetComponentTypes: strategy.targetComponentTypes,
+            successMetrics: strategy.successMetrics
+          })),
+          totalGenerations: providerPerformanceCache.reduce((sum, p) => sum + p.generationCount, 0),
+          lastUpdated: new Date()
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching AI performance metrics:', error);
       res.status(500).json({
         status: 'error',
         error: error instanceof Error ? error.message : 'Unknown error'
